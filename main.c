@@ -139,6 +139,7 @@ unsigned char ucTemp[16];
 int i;
 int t, p, h; // raw sensor values
 int var1,var2,t_fine;
+int64_t P_64;
 int64_t var1_64, var2_64;
 
 	ucTemp[0] = 0xf7; // start of data registers we want
@@ -172,11 +173,12 @@ int64_t var1_64, var2_64;
 	}
 	else
 	{
-		*P = 1048576 - p;
-		*P = (((*P<<31)-var2_64)*3125)/var1_64;
-		var1_64 = (((int64_t)calP9) * (*P>>13) * (*P>>13)) >> 25;
-		var2_64 = (((int64_t)calP8) * *P) >> 19;
-		*P = ((*P + var1_64 + var2_64) >> 8) + (((int64_t)calP7)<<4);
+		P_64 = 1048576 - p;
+		P_64 = (((P_64<<31)-var2_64)*3125)/var1_64;
+		var1_64 = (((int64_t)calP9) * (P_64>>13) * (P_64>>13)) >> 25;
+		var2_64 = (((int64_t)calP8) * P_64) >> 19;
+		P_64 = ((P_64 + var1_64 + var2_64) >> 8) + (((int64_t)calP7)<<4);
+		*P = (int)P_64;
 	}
 	// Calculate calibrated humidity value
 	var1 = (t_fine - 76800);
@@ -207,7 +209,7 @@ int T, P, H; // calibrated values
 	for (i=0; i<120; i++) // read values twice a second for 1 minute
 	{
 		bme280ReadValues(&T, &P, &H);
-		printf("Calibrated temp. = %3.2f, pres. = %d, hum. = %2.2f\n", (float)T/100.0, P, (float)H/1024.0);
+		printf("Calibrated temp. = %3.2f C, pres. = %6.2f Pa, hum. = %2.2f%%\n", (float)T/100.0, (float)P/256.0, (float)H/1024.0);
 		usleep(500000); // every half second
 	}
 
