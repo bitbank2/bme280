@@ -8,6 +8,3 @@ A simple test program to initialize and read the calibrated values from an
 I2C connected BME280. The interface code and calibration formulas are based
 on the Bosch BME280 datasheet.
 
-The pressure values are not currently being calculated correctly. I'll correct
-this shortly...
-
