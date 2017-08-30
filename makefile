@@ -1,13 +1,15 @@
 CFLAGS=-c -Wall -O2
 LIBS = -lm -lpthread
 
-all: bme280
+all: libbme280.a
 
-bme280: main.o
-	$(CC) $(LIBS) main.o -o bme280
+libbme280.a: bme280.o
+	ar -rc libbme280.a bme280.o ;\
+	sudo cp libbme280.a /usr/local/lib ;\
+	sudo cp bme280.h /usr/local/include
 
-main.o: main.c
-	$(CC) $(CFLAGS) main.c
+bme280.o: bme280.c
+	$(CC) $(CFLAGS) bme280.c
 
 clean:
-	rm -rf *o bme280
+	rm *o libbme280.a
