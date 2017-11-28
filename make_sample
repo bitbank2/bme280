@@ -10,4 +10,4 @@ main.o: main.c
 	$(CC) $(CFLAGS) main.c
 
 clean:
-	rm *o bmetest
+	rm *.o bmetest

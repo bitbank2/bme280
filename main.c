@@ -72,7 +72,7 @@ int T, P, H; // calibrated values
 		return -1; // problem - quit
 	}
 #ifdef USE_OLED
-	i = oledInit(1, 0x3c);
+	i = oledInit(0, 0x3c);
 	if (i != 0)
 	{
 		return -1;
@@ -87,7 +87,7 @@ int T, P, H; // calibrated values
 	for (i=0; i<120; i++) // read values twice a second for 1 minute
 	{
 		bme280ReadValues(&T, &P, &H);
-		T -= 350; // for some reason, the sensor reports temperatures too high
+		T -= 250; // for some reason, the sensor reports temperatures too high
 #ifdef USE_OLED
 		updateOLED(T, H); // show temp/humidity graph
 #else

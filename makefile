@@ -12,4 +12,4 @@ bme280.o: bme280.c
 	$(CC) $(CFLAGS) bme280.c
 
 clean:
-	rm *o libbme280.a
+	rm *.o libbme280.a
