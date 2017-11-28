@@ -57,7 +57,7 @@ char filename[32];
 		return -1;
 	}
 	// Read 24 bytes of calibration data
-	ucTemp[0] = 0x88; // starting from register 0x88
+	ucTemp[0] = 0x88; // starting 4from register 0x88
 	rc = write(file_i2c, ucTemp, 1);
 	i = read(file_i2c, ucCal, 24);
 	if (rc < 0 || i != 24)
@@ -181,7 +181,7 @@ int64_t var1_64, var2_64;
 		var1_64 = (((int64_t)calP9) * (P_64>>13) * (P_64>>13)) >> 25;
 		var2_64 = (((int64_t)calP8) * P_64) >> 19;
 		P_64 = ((P_64 + var1_64 + var2_64) >> 8) + (((int64_t)calP7)<<4);
-		*P = (int)P_64;
+		*P = (int)P_64 / 100;
 	}
 	// Calculate calibrated humidity value
 	var1 = (t_fine - 76800);

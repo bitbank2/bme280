@@ -17,7 +17,7 @@
 #define DELAY 1000000
 // Width of the graph (128 - 40)
 #define WIDTH 88
-void updateOLED(int T, int H)
+void updateOLED(int T, int P, int H)
 {
 static int iPos = 0; // current sample position
 static int iOldTemp[WIDTH], iOldHum[WIDTH]; // keep older samples for graphing
@@ -29,11 +29,14 @@ int i, x, y, t, h;
 		memset(iOldTemp, 0, sizeof(iOldTemp));
 		memset(iOldHum, 0, sizeof(iOldHum));
 		oledWriteString(0,0,"Temp",0);
+		oledWriteString(0,2,"Pres",0);
 		oledWriteString(0,5,"Hum",0);
 	}
 // Draw the new values and erase the old; shift everything down 1
 	sprintf(szTemp, "%2.1fC", (float)T/100.0);
 	oledWriteString(0,1,szTemp,0);
+	sprintf(szTemp, "%2.2f", (float)P/256.0);
+	oledWriteString(0,3,szTemp,0);
 	sprintf(szTemp, "%2.1f%%", (float)H/1024.0);
 	oledWriteString(0,6,szTemp,0);
 // Draw the graph lines
@@ -72,7 +75,7 @@ int T, P, H; // calibrated values
 		return -1; // problem - quit
 	}
 #ifdef USE_OLED
-	i = oledInit(0, 0x3c);
+	i = oledInit(0, 0x3c, 0, 0);
 	if (i != 0)
 	{
 		return -1;
@@ -87,9 +90,9 @@ int T, P, H; // calibrated values
 	for (i=0; i<120; i++) // read values twice a second for 1 minute
 	{
 		bme280ReadValues(&T, &P, &H);
-		T -= 250; // for some reason, the sensor reports temperatures too high
+		T -= 150; // for some reason, the sensor reports temperatures too high
 #ifdef USE_OLED
-		updateOLED(T, H); // show temp/humidity graph
+		updateOLED(T, P, H); // show temp/humidity graph
 #else
 		printf("Calibrated temp. = %3.2f C, pres. = %6.2f Pa, hum. = %2.2f%%\n", (float)T/100.0, (float)P/256.0, (float)H/1024.0);
 #endif
