@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <avr/pgmspace.h>
 #include <Wire.h>
+#include <BitBang_I2C.h>
 #include <bme280.h>
 
 //
@@ -14,70 +15,95 @@
 // updated 2/13/2018 for Arduino
 //
 // Sensor calibration data
+static int iSDAPin, iSCLPin;
 static byte bAddr;
 static int32_t calT1,calT2,calT3;
 static int32_t calP1, calP2, calP3, calP4, calP5, calP6, calP7, calP8, calP9;
 static int32_t calH1, calH2, calH3, calH4, calH5, calH6;
 // Wrapper function to write I2C data on Arduino
-static void I2CWrite(byte bAddr, byte *pData, byte bLen)
+static void _I2CWrite(byte bAddr, byte *pData, byte bLen)
 {
-  Wire.beginTransmission(bAddr);
-  Wire.write(pData, bLen);
-  Wire.endTransmission();
-} /* I2CWrite() */
+  if (iSDAPin != -1 && iSCLPin != -1)
+  {
+    I2CWrite(bAddr, pData, bLen);
+  }
+  else
+  {
+    Wire.beginTransmission(bAddr);
+    Wire.write(pData, bLen);
+    Wire.endTransmission();
+  }
+} /* _I2CWrite() */
 
-static byte I2CRead(byte bAddr, byte bRegister, byte *pData, byte iLen)
+static byte _I2CRead(byte bAddr, byte bRegister, byte *pData, byte iLen)
 {
 byte ucTemp[2];
 byte x;
 
-  ucTemp[0] = bRegister;
-  I2CWrite(bAddr, ucTemp, 1); // write address of register to read
-  Wire.requestFrom(bAddr, iLen); // request N bytes
-  x = 0;
-  while (x < iLen && Wire.available())
+  if (iSDAPin != -1 && iSCLPin != -1)
   {
-     pData[x] = Wire.read();
-     x++;
+    x = I2CReadRegister(bAddr, bRegister, pData, iLen);
+    if (x > 0)
+       x = iLen; // turn TRUE into number of bytes read
+  }
+  else
+  {
+    ucTemp[0] = bRegister;
+    _I2CWrite(bAddr, ucTemp, 1); // write address of register to read
+    Wire.requestFrom(bAddr, iLen); // request N bytes
+    x = 0;
+    while (x < iLen && Wire.available())
+    {
+       pData[x] = Wire.read();
+       x++;
+    }
   }
   return x;
   
-} /* I2CRead() */
+} /* _I2CRead() */
 
 //
 // Opens a file system handle to the I2C device
 // reads the calibration data and sets the device
 // into auto sensing mode
 //
-int bme280Init(byte addr)
+int bme280Init(byte addr, int iSDA, int iSCL)
 {
 byte i;
 byte ucTemp[32];
 byte ucCal[36];
 
    bAddr = addr;
-   Wire.begin(); // Initiate the Wire library; the default 100k clock is fine for this device
-   i = I2CRead(bAddr, 0xd0, ucTemp, 1); // get ID
+   iSDAPin = iSDA; iSCLPin = iSCL;
+   if (iSDAPin != -1 && iSCLPin != -1)
+   {
+     I2CInit(iSDAPin, iSCLPin, 100000L); // use BitBang library
+   }
+   else
+   {
+     Wire.begin(); // Initiate the Wire library; the default 100k clock is fine for this device
+   }
+   i = _I2CRead(bAddr, 0xd0, ucTemp, 1); // get ID
    if (i != 1)
    {
-//      Serial.println("bme280 initialization failed");
+      Serial.println("bme280 initialization failed");
       return -1;
    }
    else if (ucTemp[0] != 0x60)
    {
-//      Serial.println("bme280 sensor ID doesn't match");
+      Serial.println("bme280 sensor ID doesn't match");
      return -1;
    }
-//      Serial.println("bme280 ID matches!");
+      Serial.println("bme280 ID matches!");
    // Read 24 bytes of calibration data
-   i = I2CRead(bAddr, 0x88, ucCal, 24); // 24 from register 0x88
+   i = _I2CRead(bAddr, 0x88, ucCal, 24); // 24 from register 0x88
    if (i != 24)
    {
 //                printf("calibration data not read correctly\n");
       return -1;
    }
-   i = I2CRead(bAddr, 0xa1, &ucCal[24], 1); // get humidity calibration byte
-   i = I2CRead(bAddr, 0xe1, &ucCal[25], 7); // get 7 more humidity calibration bytes
+   i = _I2CRead(bAddr, 0xa1, &ucCal[24], 1); // get humidity calibration byte
+   i = _I2CRead(bAddr, 0xe1, &ucCal[25], 7); // get 7 more humidity calibration bytes
    if (i < 7) // something went wrong
      {}
         // Prepare temperature calibration data
@@ -120,15 +146,15 @@ byte ucCal[36];
 
         ucTemp[0] = 0xf2;
         ucTemp[1] = 0x01; // humidity over sampling rate = 1
-        I2CWrite(bAddr, ucTemp, 2); // control humidity register
+        _I2CWrite(bAddr, ucTemp, 2); // control humidity register
 
         ucTemp[0] = 0xf4;
         ucTemp[1] = 0x27; // normal mode, temp and pressure over sampling rate=1
-        I2CWrite(bAddr, ucTemp, 2); // control measurement register
+        _I2CWrite(bAddr, ucTemp, 2); // control measurement register
 
         ucTemp[0] = 0xf5;
         ucTemp[1] = 0xa0; // set stand by time to 1 second
-        I2CWrite(bAddr, ucTemp, 2); // config
+        _I2CWrite(bAddr, ucTemp, 2); // config
  
         return 0;
 
@@ -150,8 +176,8 @@ int32_t var1,var2,t_fine;
 int64_t P_64;
 int64_t var1_64, var2_64;
 
-        i = I2CRead(bAddr, 0xf7, ucTemp, 8); // start of data regs
-        if (i != 8)
+        i = _I2CRead(bAddr, 0xf7, ucTemp, 8); // start of data regs
+        if (i <= 0)
         {
             return -1; // something went wrong
         }

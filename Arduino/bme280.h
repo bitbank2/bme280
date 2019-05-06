@@ -15,7 +15,7 @@
 // If device not present or problems, returns -1
 // otherwise returns 0
 //
-int bme280Init(byte addr);
+int bme280Init(byte addr, int iSDAPin, int iSCLPin);
 //
 // Read the sensor register values
 // and translate them into calibrated readings
