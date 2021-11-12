@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <avr/pgmspace.h>
-#include <Wire.h>
 #include <BitBang_I2C.h>
 #include <bme280.h>
 
@@ -20,44 +19,21 @@ static byte bAddr;
 static int32_t calT1,calT2,calT3;
 static int32_t calP1, calP2, calP3, calP4, calP5, calP6, calP7, calP8, calP9;
 static int32_t calH1, calH2, calH3, calH4, calH5, calH6;
+static BBI2C bbi2c;
+
 // Wrapper function to write I2C data on Arduino
 static void _I2CWrite(byte bAddr, byte *pData, byte bLen)
 {
-  if (iSDAPin != -1 && iSCLPin != -1)
-  {
-    I2CWrite(bAddr, pData, bLen);
-  }
-  else
-  {
-    Wire.beginTransmission(bAddr);
-    Wire.write(pData, bLen);
-    Wire.endTransmission();
-  }
+    I2CWrite(&bbi2c, bAddr, pData, bLen);
 } /* _I2CWrite() */
 
 static byte _I2CRead(byte bAddr, byte bRegister, byte *pData, byte iLen)
 {
-byte ucTemp[2];
 byte x;
 
-  if (iSDAPin != -1 && iSCLPin != -1)
-  {
-    x = I2CReadRegister(bAddr, bRegister, pData, iLen);
-    if (x > 0)
-       x = iLen; // turn TRUE into number of bytes read
-  }
-  else
-  {
-    ucTemp[0] = bRegister;
-    _I2CWrite(bAddr, ucTemp, 1); // write address of register to read
-    Wire.requestFrom(bAddr, iLen); // request N bytes
-    x = 0;
-    while (x < iLen && Wire.available())
-    {
-       pData[x] = Wire.read();
-       x++;
-    }
-  }
+  x = I2CReadRegister(&bbi2c, bAddr, bRegister, pData, iLen);
+  if (x > 0)
+     x = iLen; // turn TRUE into number of bytes read
   return x;
   
 } /* _I2CRead() */
@@ -74,15 +50,11 @@ byte ucTemp[32];
 byte ucCal[36];
 
    bAddr = addr;
-   iSDAPin = iSDA; iSCLPin = iSCL;
-   if (iSDAPin != -1 && iSCLPin != -1)
-   {
-     I2CInit(iSDAPin, iSCLPin, 100000L); // use BitBang library
-   }
-   else
-   {
-     Wire.begin(); // Initiate the Wire library; the default 100k clock is fine for this device
-   }
+   memset(&bbi2c, 0, sizeof(bbi2c));
+   bbi2c.iSDA = iSDA;
+   bbi2c.iSCL = iSCL;
+   bbi2c.bWire = 1;
+   I2CInit(&bbi2c, 100000L); // use BitBang library
    i = _I2CRead(bAddr, 0xd0, ucTemp, 1); // get ID
    if (i != 1)
    {
